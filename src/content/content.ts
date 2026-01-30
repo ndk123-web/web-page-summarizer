@@ -11,10 +11,10 @@ chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
 
     // send response now change the dom and paste the summary in a page
     document.body.innerText =
-      "This is the extracted text summary: " +
-      document.body.innerText.slice(0, 100) +
-      "...";
+      "This is the extracted text summary: " + document.body.innerText !== null
+        ? document.body.innerText.slice(0, 100) + "..."
+        : "No text found.";
 
-      console.log("Page text extracted and modified.");
+    console.log("Page text extracted and modified.");
   }
 });
