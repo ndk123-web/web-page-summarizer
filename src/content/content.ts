@@ -19,6 +19,8 @@
 //   }
 // });
 
+// import React from "react";
+
 // Popup to content script communication
 // Keep the message channel open for async response
 chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
@@ -41,7 +43,20 @@ chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
     const text = document.body.innerText || "No text found.";
     console.log("Sending response:", { text });
     sendResponse({ text });
-
   }
+
+  if (msg.type === "INJECT_SIDEBAR") {
+    import("./sidebar.tsx").then(({ mountSidebar }) => {
+      mountSidebar();
+      sendResponse({ status: "SIDEBAR_INJECTED" });
+      console.log("Sidebar injected into the page.");
+    }).catch((error) => {
+      console.error("Error importing sidebar:", error);
+      sendResponse({ status: "SIDEBAR_INJECTION_FAILED", error: error.message });
+    });
+    
+    return true; // Keep channel open for async response
+  }
+
   return true; // Keep the channel open for async response
 });
