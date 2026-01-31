@@ -4,7 +4,7 @@ import '../index.css'
 export default function Popup() {
   const [text, setText] = useState("")
   const [loading, setLoading] = useState(false)
-  const [sidebarStatus, setSidebarStatus] = useState("")
+  const [sidebarStatus, setSidebarStatus] = useState(false)
 
   const getPageText = async () => {
     setLoading(true)
@@ -37,7 +37,7 @@ export default function Popup() {
   }
 
   const injectSidebar = async () => {
-    setSidebarStatus("Injecting...")
+    setSidebarStatus(true)
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
 
     if (tab.id) {
@@ -45,21 +45,26 @@ export default function Popup() {
         chrome.tabs.sendMessage(tab.id, {type : "INJECT_SIDEBAR"}, (response) => {
           console.log("Sidebar injection response:", response)
           if (response && response.status === "SIDEBAR_INJECTED") {
-            setSidebarStatus("✓ Sidebar Active")
-            setTimeout(() => setSidebarStatus(""), 2000)
+            // setSidebarStatus("✓ Sidebar Active")
+            // setTimeout(() => setSidebarStatus(""), 2000)
           }
           else {
-            setSidebarStatus("Failed to inject")
-            setTimeout(() => setSidebarStatus(""), 2000)
+            // setSidebarStatus("Failed to inject")
+            // setTimeout(() => setSidebarStatus(""), 2000)
+            confirm("Failed to inject sidebar: " + (response?.error || "Unknown error"))
           }
         })
       }
       catch(error) {
         console.error("Error injecting sidebar:", error)
-        setSidebarStatus("Error")
-        setTimeout(() => setSidebarStatus(""), 2000)
+        // setSidebarStatus("Error")
+        // setTimeout(() => setSidebarStatus(""), 2000)
       }
     }
+  }
+
+  const toggleSidebar = async () => {
+    setSidebarStatus(!sidebarStatus)
   }
 
   return (
@@ -121,7 +126,12 @@ export default function Popup() {
 
         {/* Sidebar Button */}
         <button 
-          onClick={injectSidebar}
+          onClick={() => {
+            if (!sidebarStatus)
+                injectSidebar()
+            
+            toggleSidebar()
+          }}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg"
         >
           {sidebarStatus ? (
@@ -131,7 +141,7 @@ export default function Popup() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-              <span>Enable Sidebar</span>
+              <span>{sidebarStatus ? "Enable Sidebar" : "Disable Sidebar"}</span>
             </>
           )}
         </button>
