@@ -47,3 +47,19 @@ Standard extension development can be clunky. **CRXJS** simplifies this by:
 - **Popup** ➔ sends message to ➔ **Content Script** (to get page text).
 - **Content Script** ➔ responds with ➔ **Scraped Text**.
 - **Popup** ➔ sends text to ➔ **Background Script** (for API processing).
+
+### Where to Where Call is Going
+
+1. chrome.runtime.sendMessage
+   - From Content Script / Popup to Background Script
+
+   ```js
+   chrome.runtime.sendMessage({ type: string }, (response) => {});
+   ```
+
+2. chrome.tabs.sendMessage
+   - From Popup to Content Script
+
+   ```js
+   chrome.tabs.sendMessage(tabId, { type: string }, (response) => {});
+   ```
