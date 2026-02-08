@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { cn } from "@/lib/utils";
-import { X, Send, Bot, Moon, Sun } from "lucide-react";
+import { X, Send, Bot, Moon, Sun, PanelLeft, PanelRight, Settings2 } from "lucide-react";
 
 // Types
 type Message = {
@@ -19,10 +19,17 @@ type Message = {
 };
 
 type Provider = "online" | "offline";
+type SidebarSide = "left" | "right";
 
 export default function Sidebar() {
   // Theme State
   const [isDark, setIsDark] = useState(false);
+  
+  // Sidebar State
+  const [side, setSide] = useState<SidebarSide>("right");
+  const [width, setWidth] = useState(400);
+  const [isResizing, setIsResizing] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   
   // Chat State
   const [messages, setMessages] = useState<Message[]>([
@@ -50,6 +57,43 @@ export default function Sidebar() {
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
+
+  // Resizing Logic
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      let newWidth;
+      if (side === "right") {
+        newWidth = window.innerWidth - e.clientX;
+      } else {
+        newWidth = e.clientX;
+      }
+
+      // Constraints
+      if (newWidth < 300) newWidth = 300;
+      if (newWidth > 800) newWidth = 800;
+      
+      setWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      // Re-enable text selection
+      document.body.style.userSelect = "";
+    };
+
+    if (isResizing) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      document.body.style.userSelect = "none"; // Prevent text selection while dragging
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing, side]);
 
   const toggleTheme = () => {
     const newTheme = !isDark;
@@ -82,19 +126,43 @@ export default function Sidebar() {
   };
 
   return (
-    <div className={cn("fixed right-0 top-0 h-screen w-96 shadow-2xl z-[2147483647] font-sans antialiased transition-colors duration-300 flex flex-col border-l", isDark ? "dark bg-black text-gray-100 border-neutral-800" : "light bg-white text-gray-900 border-gray-200")}>
-      
+    <div 
+      style={{ width: `${width}px` }}
+      className={cn(
+        "fixed top-0 h-screen shadow-2xl z-[2147483647] font-sans antialiased transition-colors duration-300 flex flex-col",
+        side === "right" ? "right-0 border-l" : "left-0 border-r",
+        isDark ? "dark bg-black text-gray-100 border-neutral-800" : "light bg-white text-gray-900 border-gray-200"
+      )}
+    >
+      {/* Resizer Handle */}
+      <div 
+        className={cn(
+          "absolute top-0 bottom-0 w-1 cursor-ew-resize hover:bg-primary/50 transition-colors z-[2147483650]",
+          side === "right" ? "left-0 -translate-x-1/2" : "right-0 translate-x-1/2"
+        )}
+        onMouseDown={(e) => {
+            e.preventDefault();
+            setIsResizing(true);
+        }}
+      />
+
       {/* Header */}
       <div className={cn("flex items-center justify-between p-4 border-b backdrop-blur supports-[backdrop-filter]:bg-background/60", isDark ? 'border-neutral-800 bg-black' : 'border-gray-200 bg-white')}>
         <div className="flex items-center gap-2 font-semibold">
            <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shadow-sm", isDark ? 'bg-white text-black' : 'bg-black text-white')}>
              <Bot className="h-5 w-5" />
            </div>
-           <span className="text-sm">Web Assistant</span>
+           
+           <div className="flex flex-col">
+              <span className="text-sm leading-none">Web Assistant</span>
+              <span className="text-[10px] text-muted-foreground font-normal mt-0.5 opacity-70">
+                Drag edge to resize
+              </span>
+           </div>
         </div>
         <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-8 w-8 rounded-full hover:bg-neutral-800/50">
-                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <Button variant="ghost" size="icon" onClick={() => setShowSettings(!showSettings)} className={cn("h-8 w-8 rounded-full", showSettings && "bg-accent")}>
+                <Settings2 className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={closeSidebar} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
                 <X className="h-4 w-4" />
@@ -102,7 +170,45 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Messages Area - Flex Grow */}
+      {/* Extra Settings Panel (Collapsible) */}
+      {showSettings && (
+        <div className={cn("px-4 py-3 border-b space-y-3 animate-in slide-in-from-top-2", isDark ? "bg-neutral-900/30 border-neutral-800" : "bg-gray-50 border-gray-200")}>
+            <div className="flex items-center justify-between">
+                <span className="text-xs font-medium opacity-80">Theme</span>
+                <Button variant="outline" size="sm" onClick={toggleTheme} className="h-7 text-xs gap-2 w-24">
+                    {isDark ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
+                    {isDark ? "Light" : "Dark"}
+                </Button>
+            </div>
+            
+            <div className="flex items-center justify-between">
+                <span className="text-xs font-medium opacity-80">Position</span>
+                <div className="flex items-center border rounded-md overflow-hidden h-7">
+                    <button 
+                        onClick={() => setSide("left")}
+                        className={cn("px-3 h-full flex items-center justify-center transition-colors hover:bg-accent", side === "left" && "bg-primary text-primary-foreground")}
+                    >
+                        <PanelLeft className="h-3 w-3" />
+                    </button>
+                    <div className="w-[1px] bg-border h-full"></div>
+                    <button 
+                        onClick={() => setSide("right")}
+                        className={cn("px-3 h-full flex items-center justify-center transition-colors hover:bg-accent", side === "right" && "bg-primary text-primary-foreground")}
+                    >
+                        <PanelRight className="h-3 w-3" />
+                    </button>
+                </div>
+            </div>
+            
+            <div className="flex items-center justify-end">
+                <span className="text-[10px] text-muted-foreground">
+                    Current width: {width}px
+                </span>
+            </div>
+        </div>
+      )}
+
+      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 custom-scrollbar">
         {messages.map((msg, i) => (
             <div key={i} className={cn("flex w-full animate-in fade-in slide-in-from-bottom-2 duration-300", msg.role === 'user' ? "justify-end" : "justify-start")}>
@@ -162,17 +268,6 @@ export default function Sidebar() {
             </Select>
         </div>
 
-        {/* Dynamic Settings Fields - Only showing simplified for now */}
-        {/* API Key Input Removed as requested */}
-        {/* {provider === 'online' && (
-             <Input 
-                placeholder="Enter API Key" 
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="h-8 text-xs bg-background/50"
-             />
-        )} */}
          {provider === 'offline' && (
              <Input 
                 placeholder="Ollama URL (http://localhost:11434)" 
