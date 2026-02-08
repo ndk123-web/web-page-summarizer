@@ -18,5 +18,9 @@
       "js": ["src/content/content.ts"],
       "run_at": "document_end"
     }
-  ]
+  ],
+  "option_ui": {
+    "page": "options/options.tsx",
+    "open_in_tab": true
+  }
 }
