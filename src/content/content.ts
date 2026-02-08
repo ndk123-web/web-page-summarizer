@@ -47,9 +47,12 @@ chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
 
   if (msg.type === "INJECT_SIDEBAR") {
     console.log("Starting sidebar injection...");
+
+    // Dynamically import the sidebar module and mount it to the page
     import("./sidebar.tsx")
       .then(({ mountSidebar }) => {
         console.log("Sidebar module loaded successfully");
+        
         try {
           mountSidebar();
           sendResponse({ status: "SIDEBAR_INJECTED" });

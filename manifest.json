@@ -18,5 +18,6 @@
       "js": ["src/content/content.ts"],
       "run_at": "document_end"
     }
-  ]
+  ],
+  "options_page": "src/options/options.html"
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Button } from "../components/ui/button"
-import { Zap, Sidebar, Moon, Sun } from "lucide-react"
+import { Zap, Sidebar, Moon, Sun, Settings } from "lucide-react"
 import '../index.css'
 
 export default function Popup() {
@@ -83,6 +83,14 @@ export default function Popup() {
     setSidebarStatus(!sidebarStatus)
   }
 
+  const handleOptionClick = () => {
+    if (chrome.runtime.openOptionsPage) {
+      chrome.runtime.openOptionsPage();
+    } else {
+      window.open(chrome.runtime.getURL('options/options.html'));
+    }
+  }
+
   return (
     <div className={`w-96 flex flex-col h-auto rounded-lg shadow-2xl transition-colors border ${isDark ? 'bg-black text-gray-100 border-neutral-800' : 'bg-white text-gray-900 border-gray-200'}`}>
       {/* Header - Vercel style */}
@@ -105,6 +113,9 @@ export default function Popup() {
           ) : (
             <Moon className="w-4 h-4" />
           )}
+        </button>
+        <button onClick={handleOptionClick} className={`p-2 rounded-md transition-colors ${isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-black'}`}>
+          <Settings className="w-4 h-4" />
         </button>
       </div>
 

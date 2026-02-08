@@ -1,3 +1,5 @@
+// Part of ContentScript - Renders the Sidebar UI and handles all interactions
+
 import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -18,8 +20,9 @@ type Message = {
   content: string;
 };
 
-type Provider = "online" | "offline";
+type Provider = "openai" | "gemini" | "claude" | "deepseek" | "ollama";
 type SidebarSide = "left" | "right";
+type Mode = "online" | "offline";
 
 export default function Sidebar() {
   // Theme State
@@ -39,8 +42,9 @@ export default function Sidebar() {
   const [loading, setLoading] = useState(false);
 
   // Settings State
-  const [provider, setProvider] = useState<Provider>("online");
-  const [model, setModel] = useState("gpt-3.5-turbo");
+  const [mode, setMode] = useState<Mode>("online");
+  const [provider, setProvider] = useState<Provider>("openai");
+  const [model, setModel] = useState("gpt-4o");
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
 
   // Effect for Theme
@@ -57,6 +61,32 @@ export default function Sidebar() {
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
+
+  // Sync settings from storage on mount
+  useEffect(() => {
+    chrome.storage.sync.get(['currentProvider', 'currentModel', 'provider', 'openai', 'gemini', 'claude', 'deepseek', 'ollama'], (result: any) => {
+        // Prioritize "currentProvider" if it exists (from Sidebar last session), otherwise fall back to "provider" (from Options)
+        if (result.currentProvider) {
+            setProvider(result.currentProvider as Provider);
+        } else if (result.provider) {
+            setProvider(result.provider as Provider);
+        }
+
+        if (result.currentModel) {
+            setModel(result.currentModel as string);
+        }
+        
+        // Load Ollama URL from settings if available
+        if (result.ollama && result.ollama.url) {
+            setOllamaUrl(result.ollama.url);
+        }
+    });
+  }, []);
+
+  // Sync "current" selection to storage whenever it changes
+  useEffect(() => {
+    chrome.storage.sync.set({ currentProvider: provider, currentModel: model });
+  }, [provider, model]);
 
   // Resizing Logic
   useEffect(() => {
@@ -115,14 +145,33 @@ export default function Sidebar() {
     setInput("");
     setLoading(true);
 
-    // Mock response for now
-    setTimeout(() => {
-      setMessages([
-        ...newMessages,
-        { role: "assistant", content: "I'm a basic placeholder. Connect me to " + (provider === 'online' ? "OpenAI/Gemini" : "Ollama") + " to get real responses!" }
+    // get the keys and values from chrome extension storage and log them
+    // chrome.storage.sync.get(["openaiApiKey", "openaiModel", "ollamaUrl", "ollamaModel"], (result) => {
+    //   console.log("Current Settings:");
+    //   console.log("OpenAI API Key:", result.openaiApiKey ? "********" : "Not Set");
+    //   console.log("OpenAI Model:", result.openaiModel || "Not Set");
+    //   console.log("Ollama URL:", result.ollamaUrl || "Not Set");
+    //   console.log("Ollama Model:", result.ollamaModel || "Not Set");
+    // });
+
+    // call the appropriate API based on provider and model settings and get the response
+    
+    // DEBUG: Log ALL storage data before sending
+    chrome.storage.sync.get(null, (items) => {
+       console.log("🛑 DEBUG: Full Storage Dump:", items);
+       console.log("👉 Sending Message with:", { provider, mode, model, prompt: input });
+    });
+
+    chrome.runtime.sendMessage({type: "chat_message", provider, model,mode, prompt: input}, ({response}) => {
+      console.log("Received response from background script:", response);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: response || "No response received." }
       ]);
       setLoading(false);
-    }, 1000);
+    })
+
+    // Mock response block removed to allow real API response
   };
 
   return (
@@ -236,9 +285,10 @@ export default function Sidebar() {
         
         {/* Model Selector Bar */}
         <div className="grid grid-cols-2 gap-2">
-            <Select value={provider} onValueChange={(val) => setProvider(val as Provider)}>
-              <SelectTrigger className={cn("h-8 text-xs", isDark ? "bg-neutral-900 border-neutral-800 text-gray-300" : "bg-white border-gray-200")}>
-                <SelectValue placeholder="Provider" />
+            {/* Mode Selector */}
+            <Select value={mode} onValueChange={(val) => setMode(val as Mode)}>
+              <SelectTrigger className={cn("h-8 text-xs font-semibold", isDark ? "bg-neutral-900 border-neutral-800 text-gray-300" : "bg-white border-gray-200")}>
+                <SelectValue placeholder="Mode" />
               </SelectTrigger>
               <SelectContent className={cn("z-[2147483648] border", isDark ? "dark border-neutral-800 bg-neutral-950 text-white" : "light border-gray-200 bg-white text-gray-950")}>
                 <SelectItem value="online">Online (API)</SelectItem>
@@ -246,29 +296,79 @@ export default function Sidebar() {
               </SelectContent>
             </Select>
 
-            <Select value={model} onValueChange={setModel}>
-              <SelectTrigger className={cn("h-8 text-xs", isDark ? "bg-neutral-900 border-neutral-800 text-gray-300" : "bg-white border-gray-200")}>
-                <SelectValue placeholder="Model" />
+            {/* Provider Selector (Only visible if Online) */}
+            {mode === 'online' ? (
+                 <Select value={provider} onValueChange={(val) => setProvider(val as Provider)}>
+                    <SelectTrigger className={cn("h-8 text-xs", isDark ? "bg-neutral-900 border-neutral-800 text-gray-300" : "bg-white border-gray-200")}>
+                        <SelectValue placeholder="Provider" />
+                    </SelectTrigger>
+                    <SelectContent className={cn("z-[2147483648] border", isDark ? "dark border-neutral-800 bg-neutral-950 text-white" : "light border-gray-200 bg-white text-gray-950")}>
+                        <SelectItem value="openai">OpenAI</SelectItem>
+                        <SelectItem value="gemini">Gemini</SelectItem>
+                        <SelectItem value="claude">Claude</SelectItem>
+                        <SelectItem value="deepseek">DeepSeek</SelectItem>
+                    </SelectContent>
+                </Select>
+            ) : (
+                <div className={cn("h-8 flex items-center px-3 text-xs border rounded-md opacity-50 cursor-not-allowed", isDark ? "border-neutral-800 bg-neutral-900 text-gray-500" : "border-gray-200 bg-gray-50 text-gray-500")}>
+                    Local (Ollama)
+                </div>
+            )}
+        </div>
+
+        {/* Model Selector (Dependent on Provider/Mode) */}
+        {!showSettings && ( // Hide if expanded settings are open to save space, or just always show? Let's always show but keep it compact.
+             <Select value={model} onValueChange={setModel}>
+              <SelectTrigger className={cn("h-8 text-xs w-full", isDark ? "bg-neutral-900 border-neutral-800 text-gray-300" : "bg-white border-gray-200")}>
+                <SelectValue placeholder="Select Model" />
               </SelectTrigger>
               <SelectContent className={cn("z-[2147483648] border", isDark ? "dark border-neutral-800 bg-neutral-950 text-white" : "light border-gray-200 bg-white text-gray-950")}>
-                  {provider === 'online' ? (
+                  {mode === 'online' ? (
                       <>
-                          <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                          <SelectItem value="gpt-4o">GPT-4o</SelectItem>
-                          <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
+                        {provider === 'openai' && (
+                            <>
+                                <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                                <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                                <SelectItem value="gpt-4">GPT-4</SelectItem>
+                                <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                            </>
+                        )}
+                        {provider === 'gemini' && (
+                            <>
+                                <SelectItem value="gemini-1.5-flash">Gemini 1.5 Flash</SelectItem>
+                                <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
+                                <SelectItem value="gemini-1.0-pro">Gemini 1.0 Pro</SelectItem>
+                                <SelectItem value="gemini-3-flash-preview">gemini-3-flash-preview</SelectItem>
+                                <SelectItem value="gemini-2.5-flash">gemini-2.5-flash</SelectItem>
+                            </>
+                        )}
+                        {provider === 'claude' && (
+                             <>
+                                <SelectItem value="claude-3-5-sonnet-20240620">Claude 3.5 Sonnet</SelectItem>
+                                <SelectItem value="claude-3-opus-20240229">Claude 3 Opus</SelectItem>
+                                <SelectItem value="claude-3-haiku-20240307">Claude 3 Haiku</SelectItem>
+                             </>
+                        )}
+                        {provider === 'deepseek' && (
+                             <>
+                                <SelectItem value="deepseek-chat">DeepSeek Chat</SelectItem>
+                                <SelectItem value="deepseek-coder">DeepSeek Coder</SelectItem>
+                             </>
+                        )}
                       </>
                   ) : (
                       <>
                           <SelectItem value="llama3">Llama 3</SelectItem>
                           <SelectItem value="mistral">Mistral</SelectItem>
-                          <SelectItem value="custom">Custom</SelectItem>
+                          <SelectItem value="gemma">Gemma</SelectItem>
+                          <SelectItem value="codellama">CodeLlama</SelectItem>
                       </>
                   )}
               </SelectContent>
             </Select>
-        </div>
+        )}
 
-         {provider === 'offline' && (
+         {mode === 'offline' && (
              <Input 
                 placeholder="Ollama URL (http://localhost:11434)" 
                 value={ollamaUrl}
@@ -303,7 +403,7 @@ export default function Sidebar() {
         
         <div className="flex justify-between text-[10px] text-muted-foreground px-1 font-medium">
             <span className={cn("flex items-center gap-1 opacity-70", isDark ? "text-neutral-400" : "text-gray-500")}>
-                {provider === 'online' ? '🟢 Cloud Connected' : '🟠 Local Server'}
+                {mode === 'online' ? '🟢 Cloud Connected' : '🟠 Local Server'}
             </span>
             <span className={cn("opacity-70", isDark ? "text-neutral-400" : "text-gray-500")}>{model}</span>
         </div>
