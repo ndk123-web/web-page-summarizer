@@ -1,3 +1,5 @@
+// Part of ContentScript - Renders the Sidebar UI and handles all interactions
+
 import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -114,6 +116,15 @@ export default function Sidebar() {
     setMessages(newMessages);
     setInput("");
     setLoading(true);
+
+    // get the keys and values from chrome extension storage and log them
+    // chrome.storage.sync.get(["openaiApiKey", "openaiModel", "ollamaUrl", "ollamaModel"], (result) => {
+    //   console.log("Current Settings:");
+    //   console.log("OpenAI API Key:", result.openaiApiKey ? "********" : "Not Set");
+    //   console.log("OpenAI Model:", result.openaiModel || "Not Set");
+    //   console.log("Ollama URL:", result.ollamaUrl || "Not Set");
+    //   console.log("Ollama Model:", result.ollamaModel || "Not Set");
+    // });
 
     // Mock response for now
     setTimeout(() => {

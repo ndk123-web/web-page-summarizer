@@ -1,3 +1,4 @@
+// Part of Options Page - Renders the settings UI for the extension and handles saving/loading configuration
 import { useState, useEffect, StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import { Button } from "../components/ui/button"
@@ -11,8 +12,13 @@ function Options() {
   const [activeTab, setActiveTab] = useState<"online" | "offline">("online")
   
   // Settings State
+  const [provider, setProvider] = useState("openai")
   const [openaiApiKey, setOpenaiApiKey] = useState("")
   const [openaiModel, setOpenaiModel] = useState("gpt-4o")
+  const [geminiApiKey, setGeminiApiKey] = useState("")
+  const [deepseekApiKey, setDeepseekApiKey] = useState("")
+  const [claudeApiKey, setClaudeApiKey] = useState("")
+  
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434")
   const [ollamaModel, setOllamaModel] = useState("llama3")
   const [status, setStatus] = useState("")
@@ -32,9 +38,13 @@ function Options() {
     }
 
     // Load Settings
-    chrome.storage.sync.get(['openaiApiKey', 'openaiModel', 'ollamaUrl', 'ollamaModel'], (result) => {
+    chrome.storage.sync.get(['provider', 'openaiApiKey', 'openaiModel', 'geminiApiKey', 'deepseekApiKey', 'claudeApiKey', 'ollamaUrl', 'ollamaModel'], (result) => {
+        if (result.provider) setProvider(result.provider as string)
         if (result.openaiApiKey) setOpenaiApiKey(result.openaiApiKey as string)
         if (result.openaiModel) setOpenaiModel(result.openaiModel as string)
+        if (result.geminiApiKey) setGeminiApiKey(result.geminiApiKey as string)
+        if (result.deepseekApiKey) setDeepseekApiKey(result.deepseekApiKey as string)
+        if (result.claudeApiKey) setClaudeApiKey(result.claudeApiKey as string)
         if (result.ollamaUrl) setOllamaUrl(result.ollamaUrl as string)
         if (result.ollamaModel) setOllamaModel(result.ollamaModel as string)
     })
@@ -53,8 +63,12 @@ function Options() {
 
   const handleSave = () => {
     chrome.storage.sync.set({
+        provider: provider,
         openaiApiKey: openaiApiKey,
         openaiModel: openaiModel,
+        geminiApiKey: geminiApiKey,
+        deepseekApiKey: deepseekApiKey,
+        claudeApiKey: claudeApiKey,
         ollamaUrl: ollamaUrl,
         ollamaModel: ollamaModel
     }, () => {
@@ -103,42 +117,91 @@ function Options() {
                      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                         <div className="space-y-3">
                             <label className="text-sm font-medium">AI Provider</label>
-                            <Select disabled value="openai">
+                            <Select value={provider} onValueChange={setProvider}>
                                 <SelectTrigger className={isDark ? "bg-neutral-900 border-neutral-800" : ""}>
                                     <SelectValue placeholder="Select provider" />
                                 </SelectTrigger>
                                 <SelectContent className={isDark ? "bg-neutral-900 border-neutral-800 text-white" : ""}>
                                     <SelectItem value="openai">OpenAI</SelectItem>
+                                    <SelectItem value="gemini">Google Gemini</SelectItem>
+                                    <SelectItem value="deepseek">DeepSeek</SelectItem>
+                                    <SelectItem value="claude">Anthropic Claude</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <p className="text-xs text-muted-foreground">Currently only OpenAI is supported for this extension version.</p>
+                            <p className="text-xs text-muted-foreground">Select the AI provider you want to use.</p>
                         </div>
                         
-                         <div className="space-y-3">
-                            <label className="text-sm font-medium">Model Selection</label>
-                            <Select value={openaiModel} onValueChange={setOpenaiModel}>
-                                <SelectTrigger className={isDark ? "bg-neutral-900 border-neutral-800" : ""}>
-                                    <SelectValue placeholder="Select model" />
-                                </SelectTrigger>
-                                <SelectContent className={isDark ? "bg-neutral-900 border-neutral-800 text-white" : ""}>
-                                    <SelectItem value="gpt-4o">GPT-4o (Most Capable)</SelectItem>
-                                    <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
-                                    <SelectItem value="gpt-4">GPT-4</SelectItem>
-                                    <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo (Fastest)</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {provider === 'openai' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                             <div className="space-y-3">
+                                <label className="text-sm font-medium">Model Selection</label>
+                                <Select value={openaiModel} onValueChange={setOpenaiModel}>
+                                    <SelectTrigger className={isDark ? "bg-neutral-900 border-neutral-800" : ""}>
+                                        <SelectValue placeholder="Select model" />
+                                    </SelectTrigger>
+                                    <SelectContent className={isDark ? "bg-neutral-900 border-neutral-800 text-white" : ""}>
+                                        <SelectItem value="gpt-4o">GPT-4o (Most Capable)</SelectItem>
+                                        <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                                        <SelectItem value="gpt-4">GPT-4</SelectItem>
+                                        <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo (Fastest)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                        <div className="space-y-3">
-                            <label className="text-sm font-medium">API Key</label>
-                            <Input 
-                                type="password" 
-                                placeholder="sk-..." 
-                                value={openaiApiKey} 
-                                onChange={(e) => setOpenaiApiKey(e.target.value)}
-                                className={isDark ? "bg-neutral-900 border-neutral-800" : ""}
-                            />
-                            <p className="text-xs text-muted-foreground">Your key is stored securely in your browser's local sync storage and is never shared.</p>
+                            <div className="space-y-3">
+                                <label className="text-sm font-medium">OpenAI API Key</label>
+                                <Input 
+                                    type="password" 
+                                    placeholder="sk-..." 
+                                    value={openaiApiKey} 
+                                    onChange={(e) => setOpenaiApiKey(e.target.value)}
+                                    className={isDark ? "bg-neutral-900 border-neutral-800" : ""}
+                                />
+                            </div>
+                        </div>
+                        )}
+
+                        {provider === 'gemini' && (
+                             <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <label className="text-sm font-medium">Gemini API Key</label>
+                                <Input 
+                                    type="password" 
+                                    placeholder="AIza..." 
+                                    value={geminiApiKey} 
+                                    onChange={(e) => setGeminiApiKey(e.target.value)}
+                                    className={isDark ? "bg-neutral-900 border-neutral-800" : ""}
+                                />
+                            </div>
+                        )}
+
+                        {provider === 'deepseek' && (
+                             <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <label className="text-sm font-medium">DeepSeek API Key</label>
+                                <Input 
+                                    type="password" 
+                                    placeholder="sk-..." 
+                                    value={deepseekApiKey} 
+                                    onChange={(e) => setDeepseekApiKey(e.target.value)}
+                                    className={isDark ? "bg-neutral-900 border-neutral-800" : ""}
+                                />
+                            </div>
+                        )}
+
+                        {provider === 'claude' && (
+                             <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <label className="text-sm font-medium">Claude API Key</label>
+                                <Input 
+                                    type="password" 
+                                    placeholder="sk-ant-..." 
+                                    value={claudeApiKey} 
+                                    onChange={(e) => setClaudeApiKey(e.target.value)}
+                                    className={isDark ? "bg-neutral-900 border-neutral-800" : ""}
+                                />
+                            </div>
+                        )}
+                        
+                        <div className="pb-2">
+                             <p className="text-xs text-muted-foreground">Your key is stored securely in your browser's local sync storage and is never shared.</p>
                         </div>
                      </div>
                 ) : (
