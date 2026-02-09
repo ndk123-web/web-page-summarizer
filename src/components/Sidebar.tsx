@@ -159,10 +159,17 @@ export default function Sidebar() {
     // DEBUG: Log ALL storage data before sending
     chrome.storage.sync.get(null, (items) => {
        console.log("🛑 DEBUG: Full Storage Dump:", items);
-       console.log("👉 Sending Message with:", { provider, mode, model, prompt: input });
+       console.log("👉 Sending Message with:", { provider, mode, model, prompt: input, ollamaUrl });
     });
 
-    chrome.runtime.sendMessage({type: "chat_message", provider, model,mode, prompt: input}, ({response}) => {
+    chrome.runtime.sendMessage({
+      type: "chat_message", 
+      provider, 
+      model, 
+      mode, 
+      prompt: input, 
+      ollamaUrl
+    }, ({response}) => {
       console.log("Received response from background script:", response);
       setMessages((prev) => [
         ...prev,
@@ -340,6 +347,7 @@ export default function Sidebar() {
                                 <SelectItem value="gemini-1.0-pro">Gemini 1.0 Pro</SelectItem>
                                 <SelectItem value="gemini-3-flash-preview">gemini-3-flash-preview</SelectItem>
                                 <SelectItem value="gemini-2.5-flash">gemini-2.5-flash</SelectItem>
+                                <SelectItem value="gemini-2.0-flash">gemini-2.0-flash</SelectItem>
                             </>
                         )}
                         {provider === 'claude' && (
