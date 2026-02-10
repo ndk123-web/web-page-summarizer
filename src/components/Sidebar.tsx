@@ -66,7 +66,7 @@ export default function Sidebar() {
 
   // Sync settings from storage on mount
   useEffect(() => {
-    chrome.storage.sync.get(['currentProvider', 'currentModel', 'provider', 'openai', 'gemini', 'claude', 'deepseek', 'ollama'], (result: any) => {
+    chrome.storage.sync.get(['currentProvider', 'currentModel', 'provider', 'openai', 'gemini', 'claude', 'deepseek', 'ollama', 'mode'], (result: any) => {
         // Prioritize "currentProvider" if it exists (from Sidebar last session), otherwise fall back to "provider" (from Options)
         if (result.currentProvider) {
             setProvider(result.currentProvider as Provider);
@@ -82,13 +82,18 @@ export default function Sidebar() {
         if (result.ollama && result.ollama.url) {
             setOllamaUrl(result.ollama.url);
         }
+        if (result.mode) {
+            setMode(result.mode as Mode);
+        } 
     });
   }, []);
 
   // Sync "current" selection to storage whenever it changes
   useEffect(() => {
-    chrome.storage.sync.set({ currentProvider: provider, currentModel: model });
-  }, [provider, model]);
+    chrome.storage.sync.set({ currentProvider: provider, currentModel: model, mode: mode }, () => {
+      console.log(`Saved current settings to storage: Provider=${provider}, Model=${model}, Mode=${mode}`);
+    });
+  }, [provider, model, mode]);
 
   // Resizing Logic
   useEffect(() => {
@@ -154,6 +159,7 @@ export default function Sidebar() {
     chrome.storage.sync.get(null, (items) => {
        console.log("🛑 DEBUG: Full Storage Dump:", items);
        console.log("👉 Sending Message with:", { provider, mode, model, prompt: userQuestion, ollamaUrl });
+       setMode(mode)
     });
 
     let prompt = userQuestion;
@@ -165,6 +171,7 @@ export default function Sidebar() {
         prompt = `
         You are ArthPage, an AI assistant embedded in a webpage.
         Your job is to help the user understand and interact with the webpage content.
+        Built by Navnath Kadam who is the one who built the extension and knows its capabilities best. You can answer questions, summarize content, and provide insights based on the page data.
 
         Rules:
         - Prefer answering using the provided webpage content.

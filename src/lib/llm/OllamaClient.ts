@@ -50,10 +50,10 @@ export class OllamaClient implements LLMClient {
     return data.response;
   }
 
-  async normaWay(prompt: string): Promise<string> {
-    // i will use /api/chat endpoint with stream=false and wait for the full response before returning
+  async normalWay(prompt: string): Promise<string> {
+    // i will use /api/generate endpoint with stream=false and wait for the full response before returning
 
-    const res = await fetch(`${this.baseUrl}/api/endpoint`, {
+    const res = await fetch(`${this.baseUrl}/api/generate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -86,7 +86,7 @@ export class OllamaClient implements LLMClient {
 
     let response: string = "";
     if (this.way === "normal") {
-      response = await this.normaWay(prompt);
+      response = await this.normalWay(prompt);
       console.log(`Final response from Ollama: ${response}`);
     } else if (this.way === "smart") {
       response = await this.smartWay(prompt);
