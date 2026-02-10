@@ -13,6 +13,7 @@ import {
 } from "./ui/select";
 import { cn } from "@/lib/utils";
 import { X, Send, Bot, Moon, Sun, PanelLeft, PanelRight, Settings2 } from "lucide-react";
+import { extractPageContentSafe } from "@/content/utils/extractContent";
 
 // Types
 type Message = {
@@ -136,38 +137,61 @@ export default function Sidebar() {
     if (root) root.remove();
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
     
+    // Capture input immediately
+    const userQuestion = input;
+
     // Add user message
-    const newMessages = [...messages, { role: "user" as const, content: input }];
+    const newMessages = [...messages, { role: "user" as const, content: userQuestion }];
     setMessages(newMessages);
     setInput("");
     setLoading(true);
 
-    // get the keys and values from chrome extension storage and log them
-    // chrome.storage.sync.get(["openaiApiKey", "openaiModel", "ollamaUrl", "ollamaModel"], (result) => {
-    //   console.log("Current Settings:");
-    //   console.log("OpenAI API Key:", result.openaiApiKey ? "********" : "Not Set");
-    //   console.log("OpenAI Model:", result.openaiModel || "Not Set");
-    //   console.log("Ollama URL:", result.ollamaUrl || "Not Set");
-    //   console.log("Ollama Model:", result.ollamaModel || "Not Set");
-    // });
-
-    // call the appropriate API based on provider and model settings and get the response
-    
     // DEBUG: Log ALL storage data before sending
     chrome.storage.sync.get(null, (items) => {
        console.log("🛑 DEBUG: Full Storage Dump:", items);
-       console.log("👉 Sending Message with:", { provider, mode, model, prompt: input, ollamaUrl });
+       console.log("👉 Sending Message with:", { provider, mode, model, prompt: userQuestion, ollamaUrl });
     });
+
+    let prompt = userQuestion;
+
+    try {
+        // Await the content extraction properly
+        const contentData = await extractPageContentSafe();
+
+        prompt = `
+          You Are An Expert Assistant Embedded In A Webpage whose name is "ArthPage" and Your Goal is to Help The User Interact with the Webpage Content in the Best Possible Way.
+          Always Try to use the Webpage Content to answer the user's queries and help them interact with the page. 
+          
+          "ArthPage" is built by Navnath Kadam and you can check out his work at https://portfolio.ndkdev.me or https://www.ndkdev.me. You can also find the source code of "ArthPage" at "https://github.com/ndk123-web/arthpage"
+          If the user query is not related to the page content, still try to find a way to relate it to the content and assist the user.
+
+          You Only Need to Answer User's Question Based on The Content of The Webpage and Your General Knowledge. Always Prefer Using The Webpage Content to Answer User Queries.
+
+          User Question: ${userQuestion}
+
+          Page Title: ${contentData.title}
+          Page URL: ${contentData.url}
+          Domain: ${contentData.domain}
+
+          Page Content:
+          ${contentData.content}
+        `;
+    } catch (error) {
+        console.error("Failed to extract page content:", error);
+        // Fallback: prompt remains as userQuestion
+    }
+
+    console.log("Final Prompt to be sent to background:", prompt);
 
     chrome.runtime.sendMessage({
       type: "chat_message", 
       provider, 
       model, 
       mode, 
-      prompt: input, 
+      prompt: prompt, 
       ollamaUrl
     }, ({response}) => {
       console.log("Received response from background script:", response);

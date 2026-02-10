@@ -17,7 +17,7 @@ export class OllamaClient implements LLMClient {
     );
     // fetch http://localhost:11434
 
-    const res = await fetch(`${this.baseUrl}/api/generate`, {
+    const res = await fetch(`${this.baseUrl}/api/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
