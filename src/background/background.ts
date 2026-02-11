@@ -16,7 +16,15 @@ chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
 
   if (msg.type === "chat_message") {
     // Destructure properties sent from Sidebar
-    const { provider, mode, model, prompt, ollamaUrl, currentChatListId } = msg;
+    const {
+      provider,
+      mode,
+      model,
+      prompt,
+      ollamaUrl,
+      currentChatListId,
+      actualUserPrompt,
+    } = msg;
 
     // Fallback defaults
     const activeProvider = provider || "gemini";
@@ -48,7 +56,7 @@ chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
         .then((response) => {
           // before sending the response, let's add the message to storage
           if (currentChatListId) {
-            addMessageInStorage(prompt, response, currentChatListId);
+            addMessageInStorage(actualUserPrompt, response, currentChatListId);
             console.log(
               `Added message to storage for chat ID: ${currentChatListId}`,
             );
